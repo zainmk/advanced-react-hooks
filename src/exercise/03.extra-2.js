@@ -16,6 +16,12 @@ import {
 import {useAsync} from '../utils'
 
 // 🐨 Create a PokemonCacheContext
+const PokemonCacheContext = React.createContext()
+
+function PokemonCacheProvider({...props}){
+  const [cache, dispatch] = React.useReducer(pokemonCacheReducer, {})
+  return <PokemonCacheContext.Provider value={[cache, dispatch]} {...props} />
+}
 
 // 🐨 create a PokemonCacheProvider function
 // 🐨 useReducer with pokemonCacheReducer in your PokemonCacheProvider
@@ -35,10 +41,20 @@ function pokemonCacheReducer(state, action) {
   }
 }
 
+function usePokemonCache(){
+  const context = React.useContext(PokemonCacheContext)
+  if(!context){
+    throw new Error('usePokemonCache must be used within cache provider')
+  }
+  return context
+}
+
 function PokemonInfo({pokemonName}) {
   // 💣 remove the useReducer here (or move it up to your PokemonCacheProvider)
-  const [cache, dispatch] = React.useReducer(pokemonCacheReducer, {})
+  // const [cache, dispatch] = React.useReducer(pokemonCacheReducer, {})
   // 🐨 get the cache and dispatch from useContext with PokemonCacheContext
+
+  const [cache, dispatch] = usePokemonCache()
 
   const {data: pokemon, status, error, run, setData} = useAsync()
 
@@ -55,7 +71,7 @@ function PokemonInfo({pokemonName}) {
         }),
       )
     }
-  }, [cache, pokemonName, run, setData])
+  }, [cache, dispatch, pokemonName, run, setData])
 
   if (status === 'idle') {
     return 'Submit a pokemon'
@@ -70,7 +86,8 @@ function PokemonInfo({pokemonName}) {
 
 function PreviousPokemon({onSelect}) {
   // 🐨 get the cache from useContext with PokemonCacheContext
-  const cache = {}
+  // const cache = {}
+  const [cache] = usePokemonCache()
   return (
     <div>
       Previous Pokemon
@@ -94,17 +111,19 @@ function PokemonSection({onSelect, pokemonName}) {
   // 🐨 wrap this in the PokemonCacheProvider so the PreviousPokemon
   // and PokemonInfo components have access to that context.
   return (
-    <div style={{display: 'flex'}}>
-      <PreviousPokemon onSelect={onSelect} />
-      <div className="pokemon-info" style={{marginLeft: 10}}>
-        <PokemonErrorBoundary
-          onReset={() => onSelect('')}
-          resetKeys={[pokemonName]}
-        >
-          <PokemonInfo pokemonName={pokemonName} />
-        </PokemonErrorBoundary>
+    <PokemonCacheProvider>
+      <div style={{display: 'flex'}}>
+        <PreviousPokemon onSelect={onSelect} />
+        <div className="pokemon-info" style={{marginLeft: 10}}>
+          <PokemonErrorBoundary
+            onReset={() => onSelect('')}
+            resetKeys={[pokemonName]}
+          >
+            <PokemonInfo pokemonName={pokemonName} />
+          </PokemonErrorBoundary>
+        </div>
       </div>
-    </div>
+    </PokemonCacheProvider>
   )
 }
 
